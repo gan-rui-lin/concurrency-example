@@ -1,13 +1,21 @@
+
 #include <mutex>
+#include <thread>
+#include <iostream>
+#include <chrono>
+
 class some_big_object {
-    // ...
+public:
+    int value;
+    some_big_object(int v = 0) : value(v) {}
 };
 
 void swap(some_big_object& lhs, some_big_object& rhs) {
-    // ...
+    std::swap(lhs.value, rhs.value);
 }
 
 class X{
+public:
     some_big_object some_detail;
     std::mutex m;
 public:
@@ -30,6 +38,30 @@ public:
         std::unique_lock<std::mutex> lock_b(rhs.m, std::defer_lock);
         // 同时锁定两个互斥锁，避免死锁
         std::lock(lock_a, lock_b);
-        swap(lhs.some_detail, rhs.some_detail);
+    swap(lhs.some_detail, rhs.some_detail);
+    std::cout << "Swapped: lhs=" << lhs.some_detail.value << ", rhs=" << rhs.some_detail.value << std::endl;
     }
 };
+
+// 验证多线程安全交换
+int main() {
+    some_big_object obj1(1), obj2(2);
+    X x1(obj1), x2(obj2);
+    // 启动两个线程，互相交换
+    std::thread t1([](X& a, X& b){
+        for(int i=0; i<1000; ++i) {
+            swap(a, b);
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }
+    }, std::ref(x1), std::ref(x2));
+    std::thread t2([](X& a, X& b){
+        for(int i=0; i<1000; ++i) {
+            swap(b, a);
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }
+    }, std::ref(x1), std::ref(x2));
+    t1.join();
+    t2.join();
+    std::cout << "Final: x1=" << x1.some_detail.value << ", x2=" << x2.some_detail.value << std::endl;
+    return 0;
+}
