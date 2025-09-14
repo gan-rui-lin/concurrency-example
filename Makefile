@@ -1,4 +1,4 @@
-SRCDIR := ch1
+SRCDIR := practices
 OBJDIR := build
 SUBDIR := $(OBJDIR)/$(SRCDIR)
 
